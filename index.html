@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio mit Wort-Highlighting (SRT direkt im Code)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+    #audioPlayer {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    #textDisplay {
+      border: 1px solid #ccc;
+      padding: 15px;
+      min-height: 100px;
+      font-size: 1.2em;
+      white-space: normal;
+    }
+    .current-word {
+      background-color: #add8e6;
+      font-weight: bold;
+    }
+    .word-pair {
+      display: inline-block;
+      margin-right: 10px;
+      vertical-align: top;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+    .vietnamese-word, .german-translation {
+      display: block;
+    }
+    
+    #audioPlayer {
+      width: 100%;
+      max-width: 800px; /* Maximale Breite für den Player */
+      margin: 0 auto; /* Zentriert */
+      display: block;
+      border-radius: 10px; /* Abgerundete Ecken */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Leichter Schatten */
+      position: fixed; /* Macht den Player schwebend */
+      bottom: 8%; /* Oben am Bildschirm positionieren */
+      left: 50%; /* Zentriert horizontal */
+      transform: translateX(-50%); /* Korrektur für die horizontale Zentrierung */
+      background-color: #ffffff; /* Hintergrund für den schwebenden Player */
+      padding: 10px 20px; /* Innenabstand */
+      z-index: 1000; /* Stellt sicher, dass der Player über anderem Inhalt liegt */
+      box-sizing: border-box; /* Stellt sicher, dass Padding in der Breite enthalten ist */
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Audio mit eingebetteten Untertiteln</h1>
+
+  <audio id="audioPlayer" controls>
+    <source src="My_audio.mp3" type="audio/mpeg">
+    Ihr Browser unterstützt das Audio-Element nicht.
+  </audio>
+
+  <div id="textDisplay">Lade Text...</div>
+
+  <script>
+    const srtContent = `
+1
+00:00:00,089 --> 00:00:00,307
+Tôi
+ich
+
+2
+00:00:00,332 --> 00:00:00,467
+muốn
+möchte
+
+3
+00:00:00,492 --> 00:00:00,828
+thức dậy
+aufstehen
+
+4
+00:00:00,908 --> 00:00:01,419
+rất sớm
+sehr früh
+
+5
+00:00:01,444 --> 00:00:02,063
+vào ngày mai.
+morgen.
+
+
+    `
+
+    
+    .trim();
+  </script>
+
+  <script>
+    const audioPlayer = document.getElementById('audioPlayer');
+    const textDisplay = document.getElementById('textDisplay');
+
+    function parseTime(timeString) {
+      const [h, m, s] = timeString.split(':');
+      const [seconds, ms] = s.split(',');
+      return (
+        parseInt(h) * 3600000 +
+        parseInt(m) * 60000 +
+        parseInt(seconds) * 1000 +
+        parseInt(ms)
+      );
+    }
+
+    function parseSrt(srtText) {
+      const cues = [];
+      const blocks = srtText.split(/\n{2,}/);
+      for (const block of blocks) {
+        const lines = block.trim().split('\n');
+        if (lines.length < 3) continue;
+        const index = parseInt(lines[0]);
+        const timecode = lines[1];
+        const [startTime, endTime] = timecode.split('-->').map(s => parseTime(s.trim()));
+        const vietnameseText = lines[2]?.trim();
+        const germanTranslation = lines[3]?.trim() || "";
+        cues.push({ index, startTime, endTime, vietnameseText, germanTranslation });
+      }
+      return cues;
+    }
+
+    const parsedCues = parseSrt(srtContent);
+
+    function displayText(cues) {
+      textDisplay.innerHTML = '';
+      for (const cue of cues) {
+        const span = document.createElement('span');
+        span.className = 'word-pair';
+        span.id = `cue-${cue.index}`;
+
+        const vi = document.createElement('span');
+        vi.className = 'vietnamese-word';
+        vi.textContent = cue.vietnameseText;
+
+        const de = document.createElement('span');
+        de.className = 'german-translation';
+        de.textContent = cue.germanTranslation;
+
+        span.appendChild(vi);
+        span.appendChild(de);
+        textDisplay.appendChild(span);
+      }
+    }
+
+    function updateHighlight() {
+      const currentTime = audioPlayer.currentTime * 1000;
+      parsedCues.forEach(cue => {
+        const el = document.getElementById(`cue-${cue.index}`);
+        if (el) {
+          el.classList.toggle('current-word', currentTime >= cue.startTime && currentTime < cue.endTime);
+        }
+      });
+      requestAnimationFrame(updateHighlight);
+    }
+
+    displayText(parsedCues);
+    audioPlayer.addEventListener('play', () => requestAnimationFrame(updateHighlight));
+  </script>
+
+</body>
+<Footer>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+</Footer>
+</html>
